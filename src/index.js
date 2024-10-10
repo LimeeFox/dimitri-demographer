@@ -3,6 +3,8 @@ require('dotenv').config();
 const { Client, IntentsBitField, BaseInteraction, Collection, Events, GatewayIntentBits } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
+const config = require('../config.json');
+
 
 const client = new Client({
     intents: [
@@ -63,4 +65,4 @@ client.on(Events.InteractionCreate, async interaction => {
 
 
 
-client.login(process.env.TOKEN)
+client.login(config.token)
