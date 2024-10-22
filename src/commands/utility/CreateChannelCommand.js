@@ -1,5 +1,8 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, PermissionsBitField } = require('discord.js');
-const mcs = require('node-mcstatus');
+const fs = require('fs');
+const path = require('path');
+const PlayerUtils = require('../../utils/PlayerUtils');
+const TaskManager = require('../../TaskManager');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -16,9 +19,12 @@ module.exports = {
         await interaction.reply(`Creating a demographics channel...`);
             
         try {
-            const players = await getPlayers(interaction);
-            
+            //
             // Create the voice channel
+            //
+            const ip = interaction.options.getString('server-ip');
+            const players = await PlayerUtils.getPlayers(ip);
+            
             const channel = await interaction.guild.channels.create({
                 name: `Players Online: ${players}`, // Set initial name with player count
                 type: ChannelType.GuildVoice,
@@ -33,16 +39,52 @@ module.exports = {
             await interaction.editReply({
                 content: `A Demographics channel has been created successfully, with IP ${interaction.options.getString('server-ip')}`,
             });
-    
-            // Update the channel name every minute
-            const intervalId = setInterval(async () => {
-                const playersOnline = await getPlayers(interaction); // Await to get the player count
-                await channel.setName(`Players Online: ${playersOnline}`); // Set the name correctly
-            }, 60 * 1000);
+
+            //
+            // Storing the channel in JSON
+            //
+            const filePath = path.resolve(__dirname, '../../../channel-demographics.json');
+
+            const newEntry = {
+                channelId: channel.id,
+                ip: interaction.options.getString('server-ip')
+            };
+
+            // Check if the file exists
+            if (fs.existsSync(filePath)) {
+                try {
+                    const fileData = fs.readFileSync(filePath, 'utf8');
+                    const json = JSON.parse(fileData);
+
+                    if (!Array.isArray(json)) {
+                        json = [];
+                    }
+                    
+                    json.push(newEntry);
+                    
+                    // Write updated JSON back to the file
+                    fs.writeFileSync(filePath, JSON.stringify(json, null, 2));
+                    console.log('Entry added to existing JSON file');
+                } catch (err) {
+                    console.error('Error reading or writing file', err);
+                }
+            } else {
+                const initialData = [newEntry];  // Store the new entry as the first element in an array
+
+                try {
+                    fs.writeFileSync(filePath, JSON.stringify(initialData, null, 2));
+                    console.log('New JSON file created with the first entry');
+                } catch (err) {
+                    console.error('Error creating new file', err);
+                }
+            }
     
             // Optional: You might want to store `intervalId` to clear it later if necessary
             // clearInterval(intervalId) when needed, such as when the bot stops or the channel is deleted.
     
+            // Start monitoring the server
+            TaskManager.startMonitoringServer(ip, channel);
+
         } catch (error) {
             console.error(error);
     
@@ -52,38 +94,3 @@ module.exports = {
         }
     },        
 };
-
-// Get players online from the server
-async function getPlayers(interaction) {
-    const host = interaction.options.getString('server-ip');
-    var players = 5;
-
-    try {
-        const result = await mcs.statusJava(host);
-
-        if (result && result.players) {
-            players = result.players.online;
-        } else {
-            console.log('No player information available.');
-            players = 0;
-        }
-
-    } catch (error) {
-        console.error(error);
-    }
-   
-    return players;
-}
-
-// Function to periodically check player count
-async function checkPlayerCount() {
-    const host = 'your.minecraft.server.ip'; // Replace with your server's IP
-    const playerCount = await getPlayers(host); // Get the player count
-
-    // Optionally, you can send a message to a specific channel
-    const channelId = 'your_channel_id'; // Replace with your channel ID
-    const channel = client.channels.cache.get(channelId);
-    if (channel) {
-        await channel.send(`Current player count: ${playerCount}`);
-    }
-}
