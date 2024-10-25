@@ -11,7 +11,10 @@ const client = new Client({
     intents: [
         IntentsBitField.Flags.GuildMessages,
         IntentsBitField.Flags.MessageContent,
-        IntentsBitField.Flags.Guilds
+        IntentsBitField.Flags.Guilds,
+		IntentsBitField.Flags.GuildVoiceStates,
+        IntentsBitField.Flags.GuildMessageReactions,
+        IntentsBitField.Flags.GuildChannelUpdates
     ]
 });
 
@@ -73,58 +76,64 @@ client.on(Events.InteractionCreate, async interaction => {
  */
 
 client.on('ready', async interaction => {
-	if (fs.existsSync('channel-demographics.json')) {
-		const rawData = fs.readFileSync('channel-demographics.json', 'utf8');
+	console.log(`Launching task...`);
+	await TaskManager.startMonitoringServer(client);
+	//console.log(`Task launched. Monitoring server`);
 
-		if (!rawData.trim()) {
-			console.log('The JSON file is empty.');
-			return;
-		}
+	// if (fs.existsSync('channel-demographics.json')) {
+	// 	const rawData = fs.readFileSync('channel-demographics.json', 'utf8');
 
-		var jsonData = JSON.parse(rawData);
+	// 	if (!rawData.trim()) {
+	// 		console.log('The JSON file is empty.');
+	// 		return;
+	// 	}
+
+	// 	var jsonData = JSON.parse(rawData);
 		
-		if (!Array.isArray(jsonData)) {
-			console.log("The json has incorrect data format");
-			return;
-		}
+	// 	if (!Array.isArray(jsonData)) {
+	// 		console.log("The json has incorrect data format");
+	// 		return;
+	// 	}
 
-		// Accessing the saved data
-		for (const entry of jsonData) {
-			const serverIp = entry.ip;
-			const channelId = entry.channelId;
+	// 	// Accessing the saved data
+	// 	for (const entry of jsonData) {
+	// 		const serverIp = entry.ip;
+	// 		const channelId = entry.channelId;
 
-			console.log(`Found entry:`)
-			console.log(`Server IP: ${serverIp}`);
-			console.log(`Channel ID: ${channelId}`);
-			console.log(` `);
+	// 		console.log(`Found entry:`)
+	// 		console.log(`Server IP: ${serverIp}`);
+	// 		console.log(`Channel ID: ${channelId}`);
+	// 		console.log(` `);
 
-			try {
-				const channel = await client.channels.fetch(channelId);
+	// 		try {
+	// 			const channel = await client.channels.fetch(channelId);
 	
-				// if (!channel) {
-				// 	console.log(`Channel with id ${channelId} no longer exists. Removing it from the JSON...`);
-				// 	jsonData = jsonData.filter(ent => ent.channelId !== channelId);
-				// 	continue;
-				// }
+	// 			// if (!channel) {
+	// 			// 	console.log(`Channel with id ${channelId} no longer exists. Removing it from the JSON...`);
+	// 			// 	jsonData = jsonData.filter(ent => ent.channelId !== channelId);
+	// 			// 	continue;
+	// 			// }
 
-				// All checks have passed, channel is valid
-				// Start the task of updating the name of the channel
-				TaskManager.startMonitoringServer(serverIp, channel);
+	// 			// All checks have passed, channel is valid
+	// 			// Start the task of updating the name of the channel
+	// 			TaskManager.startMonitoringServer(serverIp, channel);
 
-			} catch (error) {
-				if (error.code === 10003) { // 10003: Unknown Channel (channel no longer exists)
-					console.log(`Channel with id ${channelId} no longer exists. Removing it from the JSON...`);
-					jsonData = jsonData.filter(ent => ent.channelId !== channelId);
-					const filePath = path.resolve(__dirname, '../channel-demographics.json');
-					fs.writeFileSync(filePath, JSON.stringify(jsonData, null, 2), 'utf8');
-				} else {
-					console.error(`Error fetching channel with id ${channelId}: ${error.message}`);
-				}
-			}
-		}
-	} else {
-		console.log("File not found, no data stored.");
-	}
+	// 		} catch (error) {
+	// 			if (error.code === 10003) { // 10003: Unknown Channel (channel no longer exists)
+	// 				console.log(`Channel with id ${channelId} no longer exists. Removing it from the JSON...`);
+	// 				jsonData = jsonData.filter(ent => ent.channelId !== channelId);
+	// 				const filePath = path.resolve(__dirname, '../channel-demographics.json');
+	// 				fs.writeFileSync(filePath, JSON.stringify(jsonData, null, 2), 'utf8');
+	// 			} else {
+	// 				console.error(`Error fetching channel with id ${channelId}: ${error.message}`);
+	// 			}
+	// 		}
+	// 	}
+	// } else {
+	// 	console.log("File not found, no data stored.");
+	// }
 });
 
 client.login(config.token)
+
+module.exports = client;
