@@ -1,8 +1,8 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, PermissionsBitField } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const PlayerUtils = require('../../utils/PlayerUtils');
 const TaskManager = require('../../TaskManager');
+const ChannelFactory = require('../../utils/ChannelFactory');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -34,7 +34,6 @@ module.exports = {
             // Prepare some constants that we will reuse when making channels
             const ip = interaction.options.getString('server-ip');
             const name = interaction.options.getString('server-name');
-            const players = await PlayerUtils.getPlayers(ip);
 
            // This is where each channel will be stored, a per-server category
            // Created for each IP you decide to track
@@ -47,30 +46,15 @@ module.exports = {
             for (var i = 0; i < 5; i++) {
                
                 // Create a voice channel
-                const channel = await interaction.guild.channels.create({
-                    name: `Players Online: ${players}`, // Set initial name with player count
-                    type: ChannelType.GuildVoice,
-                    permissionOverwrites: [
-                        {
-                            id: interaction.guild.roles.everyone.id,
-                            deny: [PermissionsBitField.Flags.Connect,
-                                ... (i === 0 ? [] : [PermissionsBitField.Flags.ViewChannel])] // Show the very first channel, hide the others
-                        },
-                    ]
-                });
+                const channel = await ChannelFactory.create(interaction.client, ip, i !== 0)
         
                 const j = i + 1;
                 await interaction.editReply({
                     content: `${parseInt(j)}${j === 1 ? `st` : j === 2 ? `nd` : j === 3 ? `rd` : `th`} Demographics channel has been created successfully, with IP ${interaction.options.getString('server-ip')}`,
                 });
 
-                // Create a new json entry for the channel
-                const newEntry = {
-                    ip: ip,
-                    channelId: channel.id
-                }
-
-                serverGroup.channels.push(newEntry);
+                // Create and push a new json entry for the channel
+                await ChannelFactory.addChannelToJson(serverGroup.channels, ip, channel.id);
             }
 
             // Launch the periodic task to monitor the servers and update the channel names

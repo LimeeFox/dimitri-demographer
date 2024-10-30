@@ -5,14 +5,16 @@ async function getPlayers(ip) {
     var players = 5;
 
     try {
-        const result = await mcs.statusJava(ip);
-
-        if (result && result.players) {
-            players = result.players.online;
-        } else {
-            console.log('No player information available.');
-            players = 0;
-        }
+        await mcs.statusJava(ip)
+            .then((result) => {
+                if (result && result.players) {
+                    players = result.players.online;
+                    console.log(`players online: ${players}`);
+                } else {
+                    console.log('No player information available.');
+                    players = 0;
+                }
+            });
 
     } catch (error) {
         console.error(error);

@@ -13,8 +13,8 @@ const client = new Client({
         IntentsBitField.Flags.MessageContent,
         IntentsBitField.Flags.Guilds,
 		IntentsBitField.Flags.GuildVoiceStates,
-        IntentsBitField.Flags.GuildMessageReactions,
-        IntentsBitField.Flags.GuildChannelUpdates
+        IntentsBitField.Flags.GuildMessageReactions
+        //IntentsBitField.Flags.GuildChannelUpdates
     ]
 });
 

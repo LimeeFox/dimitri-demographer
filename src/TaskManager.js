@@ -1,6 +1,7 @@
 const PlayerUtils = require('./utils/PlayerUtils');
 const fs = require('fs');
 const path = require('path');
+const ChannelFactory = require('./utils/ChannelFactory');
 
 let intervalId = null;
 let index = 0; // Will be used to loop through the channels
@@ -34,15 +35,6 @@ async function startMonitoringServer(client) {
     } catch (error) {
         console.error(`Something went wrong with File path reading I think`, error);
     }
-
-    // // Update the channel name every minute
-    // intervalId = setInterval(async () => {
-    //     console.log(`should be updating... ${new Date()}`);
-    //     const playersOnline = await PlayerUtils.getPlayers(ip);
-    //     await channel.setName(`Players Online: ${playersOnline}`);
-    //     let currentTime = new Date();
-    //     console.log(`updating the name... ${playersOnline}, ${currentTime}`);
-    // }, 60 * 1000);
 }
 
 async function startProcess(fileData, client) {
@@ -99,16 +91,20 @@ async function processEntry(fileData, entries, client) {
         } else {
             // Hide the previous channel
             try {
-                if (previousChannel == null) {
-                    previousChannel = channelId;
-                }
-                const previousChannel = await client.channels.fetch(previousChannelId);
+                // Only hide the previous channel if it's  not the same one as we're currentl viewing
+                if (!previousChannelId) {
+                    previousChannelId = channelId;
+                } 
+                
+                if (previousChannelId !== channelId) {
+                    const previousChannel = await client.channels.fetch(previousChannelId);
 
-                // Hiding logic
-                previousChannel.permissionOverwrites.edit(channel.guild.roles.everyone, {
-                    ViewChannel: false
-                }).then(() => console.log(`Hiding the previous channel`))
-                .catch(console.error);
+                    // Hiding logic
+                    previousChannel.permissionOverwrites.edit(channel.guild.roles.everyone, {
+                        ViewChannel: false
+                    }).then(() => console.log(`Hiding the previous channel`))
+                    .catch(console.error);
+                }
             } catch (e) {
                 console.error(`Error while looking for PREVIOUS channel`, e);
             }
@@ -118,46 +114,33 @@ async function processEntry(fileData, entries, client) {
         // console.log(`index: ${index}`);
         // console.log(`isDepleated: ${isDepleated}`);
 
-        // Hide this channel 
+        previousChannelId = !isDepleated ? channelId : entries[0][(index + 4) % entries[0].length].channelId; // Fetch the previous channels ID
+        console.log(`previous channel id: ${previousChannelId}`);
     } catch (error) {
         // It is possible that at some point in time, a channel gets deleted
         // (i.e: a server admin decided to remove it)
         if (error.code === 10003) { // 10003: Unknown Channel (channel no longer exists)
             console.log(`Channel with id ${channelId} no longer exists. Removing it from the JSON...`);
 
-            // Make a copy of the json data and filter out the invalid channel
-            fileData = fileData.filter(serverStorage => {
-                for (ch of serverStorage) {
-                    if (ch.channelId !== channelId) {
-                        return true;
-                    }
-                }
-                return false;
-            });
+            // Create a new channel in its stead
+            const newChannel = await ChannelFactory.create(client, serverIp, true);
+            const newChannelId = newChannel.id;
+            console.log('===');
+            console.log(`Added a new channel with id ${newChannelId} to replace a removed one.`);
+            console.log('===');
 
-            // Overwrite the json file to erase the no-longer-valid channel
-            const filePath = path.resolve(__dirname, '../channel-demographics.json');
-            fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2), 'utf8');
+            // Remove old channel and insert new channel in the json
+            ChannelFactory.updateChannelInJson(fileData, serverIp, newChannelId, channelId);
+
+            previousChannelId = channelId;
         } else {
             console.error(`Error fetching channel with id ${channelId}: ${error.message}`);
         }
     }
-
-    previousChannelId = !isDepleated ? channelId : entries[0][(index + 4) % entries[0].length].channelId; // Fetch the previous channels ID
-    console.log(`previous channel id: ${previousChannelId}`);
 }
 
 module.exports = {
     startMonitoringServer
 }
 
-//TODO TODO TODO
-//todo
-//todo
-//todo
-//todo
-//todo
-//todo
-//todo
-//todo
 // what needs TObeDOne is storing the index where we last stopped in the json
