@@ -13,7 +13,7 @@ const config = require('../../config.json');
  * @param {string} ip server host
  * @param {boolean} isVisible visibility of the discord channel
  */
-async function create(client, ip, isVisible) {
+async function create(client, ip, isVisible, category) {
     const guildId = config.guildId;
 
     let guild;
@@ -23,9 +23,17 @@ async function create(client, ip, isVisible) {
         console.log('Could not find the guild', error);
     }
 
+    let maxPosition;
+    try {
+        maxPosition = Math.max(...guild.channels.cache.map(ch => ch.position));
+        console.log(`max pos: ${maxPosition}`);
+    } catch (error) {
+        console.log(`Could not obtain the max channel position ${error}`);
+    }
+
     // Create a voice channel
     return channel = await guild.channels.create({
-        name: `Players Online: ${await PlayerUtils.getPlayers(ip)}`, // Set initial name with player count
+        name: `Currently Playing: ${await PlayerUtils.getPlayers(ip)}`, // Set initial name with player count
         type: ChannelType.GuildVoice,
         permissionOverwrites: [
             {
@@ -33,7 +41,9 @@ async function create(client, ip, isVisible) {
                 deny: [PermissionsBitField.Flags.Connect,
                     ... (isVisible ? [] : [PermissionsBitField.Flags.ViewChannel])] // Show the channel? or hide it?
             },
-        ]
+        ],
+        position: maxPosition + 1,
+        parent: category.id
     });
 }
 

@@ -35,10 +35,34 @@ module.exports = {
             const ip = interaction.options.getString('server-ip');
             const name = interaction.options.getString('server-name');
 
-           // This is where each channel will be stored, a per-server category
-           // Created for each IP you decide to track
+            // Get the Discord Server (Guild)
+            const guild = interaction.guild;
+
+            const maxCategoryPosition = Math.max(
+                ...guild.channels.cache
+                    .filter(ch => ch.type === ChannelType.GuildCategory)
+                    .map(ch => ch.rawPosition)
+            );
+
+            console.log(`maxCagegoryPos: ${maxCategoryPosition + 1}`);
+
+            const categoryBottom = await guild.channels.create({
+                name: `Demographics standby`,
+                type: ChannelType.GuildCategory,
+                permissionOverwrites: [
+                    {
+                        id: guild.roles.everyone.id,
+                        deny: [PermissionsBitField.Flags.ViewChannel]
+                    },
+                ],
+                position: maxCategoryPosition + 1
+            });
+
+            // This is where each channel will be stored, a per-server category
+            // Created for each IP you decide to track
             const serverGroup = {
                 name: name,
+                standby: categoryBottom.id,
                 channels: []
             }
 
@@ -46,7 +70,7 @@ module.exports = {
             for (var i = 0; i < 5; i++) {
                
                 // Create a voice channel
-                const channel = await ChannelFactory.create(interaction.client, ip, i !== 0)
+                const channel = await ChannelFactory.create(interaction.client, ip, i !== 0, categoryBottom)
         
                 const j = i + 1;
                 await interaction.editReply({

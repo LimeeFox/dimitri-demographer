@@ -2,6 +2,7 @@ const PlayerUtils = require('./utils/PlayerUtils');
 const fs = require('fs');
 const path = require('path');
 const ChannelFactory = require('./utils/ChannelFactory');
+const ChannelType = require('discord.js');
 
 let intervalId = null;
 let index = 0; // Will be used to loop through the channels
@@ -52,6 +53,7 @@ async function startProcess(fileData, client) {
 
 async function processEntry(fileData, entries, client) {
     const entry = entries[0][index];
+    console.log(``);
     console.log(`working on entry ${entry.channelId}, ${new Date()}`);
 
     // // Check if entries is not empty
@@ -63,13 +65,23 @@ async function processEntry(fileData, entries, client) {
     const serverIp = entry.ip;
 	const channelId = entry.channelId;
 
+    // Get the standby channel category for inactive channels
+    const standbyCategory = await JSON.parse(fileData)[0].standby;
+
     // Find the channel for this entry
     try {
         const channel = await client.channels.fetch(channelId);
 
         // Update the channel name
         const playersOnline = await PlayerUtils.getPlayers(serverIp);
-        await channel.setName(`Players Online: ${playersOnline}`);
+        await channel.setName(`Currently Playing: ${playersOnline}`);
+
+        // Move the channel to the top of the channels list
+        await channel.setParent(null)
+        .then(() => console.log(`Moved the new channel to the top`))
+        .catch(console.error);
+        await channel.setPosition(0)
+        .catch(console.error);
 
         console.log(`players: ${playersOnline}, ${new Date()}`);
 
@@ -104,6 +116,11 @@ async function processEntry(fileData, entries, client) {
                         ViewChannel: false
                     }).then(() => console.log(`Hiding the previous channel`))
                     .catch(console.error);
+
+                    // Move the channel to the bottom of the discord channels list
+                    await previousChannel.setParent(standbyCategory)
+                    .then(() => console.log(`Moved the previous channel to the bottom`))
+                    .catch(console.error);
                 }
             } catch (e) {
                 console.error(`Error while looking for PREVIOUS channel`, e);
@@ -122,8 +139,13 @@ async function processEntry(fileData, entries, client) {
         if (error.code === 10003) { // 10003: Unknown Channel (channel no longer exists)
             console.log(`Channel with id ${channelId} no longer exists. Removing it from the JSON...`);
 
+            const category = channel.guild.channels.cache.find(
+                ch => ch.type === 'GUILD_CATEGORY' &&
+                (ch.name === "How many players online?")
+            );
+
             // Create a new channel in its stead
-            const newChannel = await ChannelFactory.create(client, serverIp, true);
+            const newChannel = await ChannelFactory.create(client, serverIp, true, category);
             const newChannelId = newChannel.id;
             console.log('===');
             console.log(`Added a new channel with id ${newChannelId} to replace a removed one.`);
@@ -134,7 +156,7 @@ async function processEntry(fileData, entries, client) {
 
             previousChannelId = channelId;
         } else {
-            console.error(`Error fetching channel with id ${channelId}: ${error.message}`);
+            console.log(error);
         }
     }
 }
