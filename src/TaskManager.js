@@ -88,8 +88,11 @@ async function processEntry(fileData, entries, client) {
         console.log(`Modifying channel with ID ${channelId}`);
 
         // Show the channel to everyone
+        await channel.permissionOverwrites.set([]);
+
         await channel.permissionOverwrites.edit(channel.guild.roles.everyone, {
-            ViewChannel: true
+            ViewChannel: true,
+            Connect: false
         }).then(() => console.log('Show the channel to all'))
         .catch(console.error);
 
