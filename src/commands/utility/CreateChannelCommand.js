@@ -44,7 +44,11 @@ module.exports = {
                     .map(ch => ch.rawPosition)
             );
 
-            console.log(`maxCagegoryPos: ${maxCategoryPosition + 1}`);
+            const categoryTop = await guild.channels.create({
+                name: `How many players in-game?`,
+                type: ChannelType.GuildCategory,
+                position: 0
+            });
 
             const categoryBottom = await guild.channels.create({
                 name: `Demographics standby`,
@@ -63,6 +67,7 @@ module.exports = {
             const serverGroup = {
                 name: name,
                 standby: categoryBottom.id,
+                display: categoryTop.id,
                 channels: []
             }
 
@@ -70,7 +75,7 @@ module.exports = {
             for (var i = 0; i < 5; i++) {
                
                 // Create a voice channel
-                const channel = await ChannelFactory.create(interaction.client, ip, i !== 0, categoryBottom)
+                const channel = await ChannelFactory.create(interaction.client, ip, false, categoryBottom)
         
                 const j = i + 1;
                 await interaction.editReply({

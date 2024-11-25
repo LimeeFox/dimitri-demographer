@@ -67,6 +67,7 @@ async function processEntry(fileData, entries, client) {
 
     // Get the standby channel category for inactive channels
     const standbyCategory = await JSON.parse(fileData)[0].standby;
+    const displayCategory = await JSON.parse(fileData)[0].display;
 
     // Find the channel for this entry
     try {
@@ -77,19 +78,17 @@ async function processEntry(fileData, entries, client) {
         await channel.setName(`Currently Playing: ${playersOnline}`);
 
         // Move the channel to the top of the channels list
-        await channel.setParent(null)
+        await channel.setParent(displayCategory)
         .then(() => console.log(`Moved the new channel to the top`))
         .catch(console.error);
-        await channel.setPosition(0)
-        .catch(console.error);
+        // await channel.setPosition(0)
+        // .catch(console.error);
 
         console.log(`players: ${playersOnline}, ${new Date()}`);
 
         console.log(`Modifying channel with ID ${channelId}`);
 
         // Show the channel to everyone
-        await channel.permissionOverwrites.set([]);
-
         await channel.permissionOverwrites.edit(channel.guild.roles.everyone, {
             ViewChannel: true,
             Connect: false
@@ -115,7 +114,7 @@ async function processEntry(fileData, entries, client) {
                     const previousChannel = await client.channels.fetch(previousChannelId);
 
                     // Hiding logic
-                    previousChannel.permissionOverwrites.edit(channel.guild.roles.everyone, {
+                    await previousChannel.permissionOverwrites.edit(channel.guild.roles.everyone, {
                         ViewChannel: false
                     }).then(() => console.log(`Hiding the previous channel`))
                     .catch(console.error);
